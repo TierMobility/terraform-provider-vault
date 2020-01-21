@@ -643,9 +643,12 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 		authLoginParameters := authLogin["parameters"].(map[string]interface{})
 
 		if d.Get("use_sts_login_helper").(bool) {
+			log.Println("[ERROR] PARAMETERSSSSSSSSS: auth enabled")
 			if err := stsLogin(authLoginParameters); err != nil {
+				log.Printf("[ERROR] PARAMETERSSSSSSSSS: %+v", err)
 				return nil, err
 			}
+			log.Printf("[ERROR] PARAMETERSSSSSSSSS: %#v", authLoginParameters)
 		}
 
 		secret, err := client.Logical().Write(authLoginPath, authLoginParameters)
