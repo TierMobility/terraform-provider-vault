@@ -1,11 +1,16 @@
 package vault
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"strings"
 
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/logging"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/mutexkv"
@@ -55,6 +60,12 @@ func Provider() terraform.ResourceProvider {
 				Required:    true,
 				DefaultFunc: schema.EnvDefaultFunc("VAULT_TOKEN", ""),
 				Description: "Token to use to authenticate to Vault.",
+			},
+			"use_sts_login_helper": {
+				Type:        schema.TypeBool,
+				Required:    true,
+				DefaultFunc: schema.EnvDefaultFunc("VAULT_STS_LOGIN_HELPER_ENABLED", ""),
+				Description: "Login helper.",
 			},
 			"token_name": {
 				Type:        schema.TypeString,
@@ -631,6 +642,12 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 		}
 		authLoginParameters := authLogin["parameters"].(map[string]interface{})
 
+		if d.Get("use_sts_login_helper").(bool) {
+			if err := stsLogin(authLoginParameters); err != nil {
+				return nil, err
+			}
+		}
+
 		secret, err := client.Logical().Write(authLoginPath, authLoginParameters)
 		if err != nil {
 			return nil, err
@@ -712,4 +729,37 @@ func parse(descs map[string]*Description) (map[string]*schema.Resource, error) {
 		}
 	}
 	return resourceMap, errs
+}
+
+func stsLogin(data map[string]interface{}) error {
+	sess, err := session.NewSession()
+	if err != nil {
+		return fmt.Errorf("failed to create session: %s", err)
+	}
+
+	var params *sts.GetCallerIdentityInput
+
+	client := sts.New(sess)
+	req, _ := client.GetCallerIdentityRequest(params)
+
+	if err := req.Sign(); err != nil {
+		return fmt.Errorf("failed to sign request: %s", err)
+	}
+
+	headers, err := json.Marshal(req.HTTPRequest.Header)
+	if err != nil {
+		return fmt.Errorf("failed to parse headers: %s", err)
+	}
+
+	body, err := ioutil.ReadAll(req.HTTPRequest.Body)
+	if err != nil {
+		return fmt.Errorf("failed to parse body: %s", err)
+	}
+
+	data["iam_http_request_method"] = req.HTTPRequest.Method
+	data["iam_request_url"] = base64.StdEncoding.EncodeToString([]byte(req.HTTPRequest.URL.String()))
+	data["iam_request_headers"] = base64.StdEncoding.EncodeToString(headers)
+	data["iam_request_body"] = base64.StdEncoding.EncodeToString(body)
+
+	return nil
 }

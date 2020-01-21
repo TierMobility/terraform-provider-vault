@@ -1,16 +1,11 @@
 package vault
 
 import (
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 
 	"github.com/hashicorp/vault/api"
@@ -92,12 +87,6 @@ func awsAuthBackendLoginResource() *schema.Resource {
 				Optional:    true,
 				Description: "The Base64-encoded, JSON serialized representation of the sts:GetCallerIdentity HTTP request headers.",
 				ForceNew:    true,
-			},
-
-			"iam_sts_lookup": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				Default:  true,
 			},
 
 			"lease_duration": {
@@ -202,37 +191,6 @@ func awsAuthBackendLoginRead(d *schema.ResourceData, meta interface{}) error {
 
 	if v, ok := d.GetOk("iam_request_headers"); ok {
 		data["iam_request_headers"] = v
-	}
-
-	if d.Get("iam_sts_lookup").(bool) {
-		sess, err := session.NewSession()
-		if err != nil {
-			return fmt.Errorf("failed to create session: %s", err)
-		}
-
-		var params *sts.GetCallerIdentityInput
-
-		client := sts.New(sess)
-		req, _ := client.GetCallerIdentityRequest(params)
-
-		if err := req.Sign(); err != nil {
-			return fmt.Errorf("failed to sign request: %s", err)
-		}
-
-		headers, err := json.Marshal(req.HTTPRequest.Header)
-		if err != nil {
-			return fmt.Errorf("failed to parse headers: %s", err)
-		}
-
-		body, err := ioutil.ReadAll(req.HTTPRequest.Body)
-		if err != nil {
-			return fmt.Errorf("failed to parse body: %s", err)
-		}
-
-		data["iam_http_request_method"] = req.HTTPRequest.Method
-		data["iam_request_url"] = base64.StdEncoding.EncodeToString([]byte(req.HTTPRequest.URL.String()))
-		data["iam_request_headers"] = base64.StdEncoding.EncodeToString(headers)
-		data["iam_request_body"] = base64.StdEncoding.EncodeToString(body)
 	}
 
 	log.Printf("[DEBUG] Reading %q from Vault", path)
