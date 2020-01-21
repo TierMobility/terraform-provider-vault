@@ -64,7 +64,7 @@ func Provider() terraform.ResourceProvider {
 			"use_sts_login_helper": {
 				Type:        schema.TypeBool,
 				Required:    true,
-				DefaultFunc: schema.EnvDefaultFunc("VAULT_STS_LOGIN_HELPER_ENABLED", ""),
+				DefaultFunc: schema.EnvDefaultFunc("VAULT_STS_LOGIN_HELPER_ENABLED", false),
 				Description: "Login helper.",
 			},
 			"token_name": {
