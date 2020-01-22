@@ -64,8 +64,8 @@ func Provider() terraform.ResourceProvider {
 			"use_sts_login_helper": {
 				Type:        schema.TypeBool,
 				Required:    true,
-				DefaultFunc: schema.EnvDefaultFunc("VAULT_STS_LOGIN_HELPER_ENABLED", false),
-				Description: "Login helper.",
+				DefaultFunc: schema.EnvDefaultFunc("VAULT_STS_LOGIN_HELPER_ENABLED", nil),
+				Description: "Use the STS login helper.",
 			},
 			"token_name": {
 				Type:        schema.TypeString,
@@ -642,7 +642,7 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 		}
 		authLoginParameters := authLogin["parameters"].(map[string]interface{})
 
-		if d.Get("use_sts_login_helper").(bool) {
+		if _, ok := d.GetOk("use_sts_login_helper"); ok {
 			if err := stsLogin(authLoginParameters); err != nil {
 				return nil, err
 			}
