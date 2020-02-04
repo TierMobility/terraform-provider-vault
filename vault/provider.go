@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -60,12 +61,6 @@ func Provider() terraform.ResourceProvider {
 				Required:    true,
 				DefaultFunc: schema.EnvDefaultFunc("VAULT_TOKEN", ""),
 				Description: "Token to use to authenticate to Vault.",
-			},
-			"use_sts_login_helper": {
-				Type:        schema.TypeBool,
-				Required:    true,
-				DefaultFunc: schema.EnvDefaultFunc("VAULT_STS_LOGIN_HELPER_ENABLED", nil),
-				Description: "Use the STS login helper.",
 			},
 			"token_name": {
 				Type:        schema.TypeString,
@@ -642,7 +637,7 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 		}
 		authLoginParameters := authLogin["parameters"].(map[string]interface{})
 
-		if _, ok := d.GetOk("use_sts_login_helper"); ok {
+		if v := os.Getenv("TF_CLI_ARGS"); v != "" {
 			if err := stsLogin(authLoginParameters); err != nil {
 				return nil, err
 			}
