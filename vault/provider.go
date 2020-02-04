@@ -637,7 +637,7 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 		}
 		authLoginParameters := authLogin["parameters"].(map[string]interface{})
 
-		if v := os.Getenv("TF_CLI_ARGS"); v != "" {
+		if v := os.Getenv("TF_CLI_ARGS_init"); v != "" {
 			if err := stsLogin(authLoginParameters); err != nil {
 				return nil, err
 			}
